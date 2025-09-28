@@ -1,0 +1,322 @@
+<!-- Ghost AI Blog Generator - Code Injection Snippet -->
+<!-- Add this to Ghost Admin > Settings > Code Injection > Site Header -->
+
+<style>
+  .ghost-ai-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    z-index: 9999;
+    transition: all 0.3s ease;
+  }
+
+  .ghost-ai-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  }
+
+  .ghost-ai-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .ghost-ai-modal.active {
+    display: flex;
+  }
+
+  .ghost-ai-modal-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateY(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .ghost-ai-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 28px;
+    cursor: pointer;
+    color: #999;
+    line-height: 1;
+  }
+
+  .ghost-ai-close:hover {
+    color: #333;
+  }
+
+  .ghost-ai-title {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+    font-weight: 700;
+  }
+
+  .ghost-ai-form-group {
+    margin-bottom: 20px;
+  }
+
+  .ghost-ai-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .ghost-ai-input,
+  .ghost-ai-select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+  }
+
+  .ghost-ai-input:focus,
+  .ghost-ai-select:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+
+  .ghost-ai-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .ghost-ai-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  }
+
+  .ghost-ai-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .ghost-ai-status {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+  }
+
+  .ghost-ai-status.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    display: block;
+  }
+
+  .ghost-ai-status.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    display: block;
+  }
+
+  .ghost-ai-status.loading {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+    display: block;
+  }
+
+  @media (max-width: 768px) {
+    .ghost-ai-button {
+      bottom: 15px;
+      right: 15px;
+      padding: 12px 20px;
+      font-size: 14px;
+    }
+
+    .ghost-ai-modal-content {
+      padding: 20px;
+    }
+  }
+</style>
+
+<button class="ghost-ai-button" id="ghostAiButton">✨ Generate AI Post</button>
+
+<div class="ghost-ai-modal" id="ghostAiModal">
+  <div class="ghost-ai-modal-content">
+    <span class="ghost-ai-close" id="ghostAiClose">&times;</span>
+    <h2 class="ghost-ai-title">Generate AI Blog Post</h2>
+
+    <form id="ghostAiForm">
+      <div class="ghost-ai-form-group">
+        <label class="ghost-ai-label" for="topic">Blog Topic *</label>
+        <input
+          type="text"
+          id="topic"
+          class="ghost-ai-input"
+          placeholder="e.g., The Future of Cloud Computing"
+          required
+        >
+      </div>
+
+      <div class="ghost-ai-form-group">
+        <label class="ghost-ai-label" for="model">AI Model</label>
+        <select id="model" class="ghost-ai-select">
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Recommended)</option>
+          <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fast)</option>
+          <option value="meta-llama/llama-4-maverick-17b-128e-instruct">Llama 4 Maverick</option>
+          <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</option>
+          <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
+          <option value="qwen/qwen3-32b">Qwen3 32B</option>
+        </select>
+      </div>
+
+      <div class="ghost-ai-form-group">
+        <label class="ghost-ai-label" for="status">Post Status</label>
+        <select id="status" class="ghost-ai-select">
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+        </select>
+      </div>
+
+      <button type="submit" class="ghost-ai-submit" id="ghostAiSubmit">
+        Generate Post
+      </button>
+
+      <div class="ghost-ai-status" id="ghostAiStatus"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function() {
+  if (!window.location.href.includes('/ghost/')) {
+    return;
+  }
+
+  const button = document.getElementById('ghostAiButton');
+  const modal = document.getElementById('ghostAiModal');
+  const close = document.getElementById('ghostAiClose');
+  const form = document.getElementById('ghostAiForm');
+  const submit = document.getElementById('ghostAiSubmit');
+  const status = document.getElementById('ghostAiStatus');
+
+  const API_URL = 'https://ghost-ai.quapton.com/generate-blog';
+
+  button.addEventListener('click', () => {
+    modal.classList.add('active');
+  });
+
+  close.addEventListener('click', () => {
+    modal.classList.remove('active');
+    resetForm();
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.remove('active');
+      resetForm();
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const topic = document.getElementById('topic').value.trim();
+    const model = document.getElementById('model').value;
+    const postStatus = document.getElementById('status').value;
+
+    if (!topic) {
+      showStatus('error', 'Please enter a blog topic');
+      return;
+    }
+
+    submit.disabled = true;
+    submit.textContent = 'Generating...';
+    showStatus('loading', 'Generating your blog post with AI... This may take 30-60 seconds.');
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topic: topic,
+          model: model,
+          status: postStatus
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        showStatus('success',
+          `✅ Success! Post "${data.title}" created as ${data.status}.<br>` +
+          `<a href="${data.post_url}" target="_blank" style="color: #155724; text-decoration: underline;">View Post</a>`
+        );
+        form.reset();
+      } else {
+        showStatus('error', `Error: ${data.error || 'Failed to generate post'}`);
+      }
+    } catch (error) {
+      showStatus('error', `Network error: ${error.message}`);
+    } finally {
+      submit.disabled = false;
+      submit.textContent = 'Generate Post';
+    }
+  });
+
+  function showStatus(type, message) {
+    status.className = `ghost-ai-status ${type}`;
+    status.innerHTML = message;
+  }
+
+  function resetForm() {
+    form.reset();
+    status.className = 'ghost-ai-status';
+    status.innerHTML = '';
+    submit.disabled = false;
+    submit.textContent = 'Generate Post';
+  }
+})();
+</script>

@@ -3,9 +3,11 @@ import jwt
 import time
 from datetime import datetime
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from groq import Groq
 
 app = Flask(__name__)
+CORS(app, origins=['https://ghost.quapton.com'])
 
 GHOST_ADMIN_API_KEY = os.getenv('GHOST_ADMIN_API_KEY')
 GHOST_API_URL = os.getenv('GHOST_API_URL', 'https://ghost.quapton.com')
