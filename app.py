@@ -28,7 +28,7 @@ def generate_ghost_token():
     token = jwt.encode(payload, bytes.fromhex(secret), algorithm='HS256', headers=header)
     return token
 
-def generate_blog_content(topic, model='llama-3.1-70b-versatile'):
+def generate_blog_content(topic, model='llama-3.3-70b-versatile'):
     prompt = f"""Write a comprehensive, SEO-optimized blog post about: {topic}
 
 Requirements:
@@ -97,7 +97,7 @@ def generate_blog():
         data = request.json
         topic = data.get('topic')
         status = data.get('status', 'draft')
-        model = data.get('model', 'llama-3.1-70b-versatile')
+        model = data.get('model', 'llama-3.3-70b-versatile')
 
         if not topic:
             return jsonify({'error': 'Topic is required'}), 400
@@ -131,10 +131,12 @@ def generate_blog():
 @app.route('/models', methods=['GET'])
 def list_models():
     models = [
-        'llama-3.1-70b-versatile',
+        'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant',
-        'mixtral-8x7b-32768',
-        'gemma2-9b-it'
+        'meta-llama/llama-4-maverick-17b-128e-instruct',
+        'meta-llama/llama-4-scout-17b-16e-instruct',
+        'openai/gpt-oss-120b',
+        'qwen/qwen3-32b'
     ]
     return jsonify({'models': models}), 200
 

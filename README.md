@@ -4,7 +4,7 @@ AI-powered blog content generation service for Ghost CMS using GroqCloud API.
 
 ## Features
 
-- 🤖 AI blog generation using GroqCloud (Llama 3.1, Mixtral, Gemma2)
+- 🤖 AI blog generation using GroqCloud (Llama 3.3, Llama 4, GPT-OSS, Qwen3)
 - 📝 Automatic publishing to Ghost CMS
 - 🔒 Secure secret management with HashiCorp Vault
 - 🚀 GitOps deployment with ArgoCD
@@ -20,7 +20,7 @@ Content-Type: application/json
 {
   "topic": "The Future of AI in Healthcare",
   "status": "draft",
-  "model": "llama-3.1-70b-versatile"
+  "model": "llama-3.3-70b-versatile"
 }
 ```
 
@@ -44,10 +44,12 @@ GET https://ghost-ai.quapton.com/models
 ```json
 {
   "models": [
-    "llama-3.1-70b-versatile",
+    "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
-    "mixtral-8x7b-32768",
-    "gemma2-9b-it"
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3-32b"
   ]
 }
 ```
