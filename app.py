@@ -31,19 +31,54 @@ def generate_ghost_token():
     token = jwt.encode(payload, bytes.fromhex(secret), algorithm='HS256', headers=header)
     return token
 
-def generate_blog_content(topic, model='llama-3.3-70b-versatile'):
+def generate_blog_content(topic, model='llama-3.3-70b-versatile', tone='professional', language='en'):
+    tone_instructions = {
+        'professional': 'Use a professional, authoritative tone suitable for business audiences',
+        'casual': 'Use a friendly, conversational tone that is easy to read',
+        'technical': 'Use technical language and detailed explanations for expert audiences',
+        'educational': 'Use an educational tone that teaches and explains concepts clearly',
+        'persuasive': 'Use a persuasive tone that convinces and motivates readers'
+    }
+
+    language_names = {
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'pt': 'Portuguese',
+        'it': 'Italian',
+        'nl': 'Dutch',
+        'ru': 'Russian',
+        'ja': 'Japanese',
+        'zh': 'Chinese',
+        'ko': 'Korean',
+        'ar': 'Arabic',
+        'hi': 'Hindi'
+    }
+
     prompt = f"""Write a comprehensive, SEO-optimized blog post about: {topic}
 
+Tone: {tone_instructions.get(tone, tone_instructions['professional'])}
+Language: Write the entire post in {language_names.get(language, 'English')}
+
 Requirements:
-- Create an engaging title
-- Write a compelling introduction
+- Create an engaging, SEO-optimized title (60-70 characters)
+- Write a compelling meta description (150-160 characters) that summarizes the post
+- Generate 5-7 relevant SEO keywords/phrases
+- Write a compelling introduction with a hook
 - Include 3-5 main sections with subheadings
 - Add actionable insights and examples
-- Write a strong conclusion
+- Write a strong conclusion with a call-to-action
 - Use markdown formatting
 - Make it approximately 1000-1500 words
+- Include relevant internal link suggestions (as placeholders like [related: topic])
 
-Format the response as JSON with keys: "title", "content" (in markdown)"""
+Format the response as JSON with keys:
+- "title": SEO-optimized title
+- "meta_description": Meta description for SEO
+- "keywords": Array of SEO keywords
+- "content": Full content in markdown
+- "internal_links": Array of suggested internal link topics"""
 
     chat_completion = groq_client.chat.completions.create(
         messages=[
@@ -64,7 +99,19 @@ Format the response as JSON with keys: "title", "content" (in markdown)"""
 
     return chat_completion.choices[0].message.content
 
-def publish_to_ghost(title, content, status='draft'):
+def add_internal_links(content, suggested_links):
+    """Add internal links to existing Ghost posts based on suggestions"""
+    # For now, just add placeholder links that can be manually updated
+    # In production, this would query Ghost API for matching posts
+    for link_topic in suggested_links[:3]:  # Limit to 3 internal links
+        placeholder = f"[related: {link_topic}]"
+        if placeholder in content:
+            # Replace with actual link format
+            link_text = f"[Learn more about {link_topic}](/blog/{link_topic.lower().replace(' ', '-')})"
+            content = content.replace(placeholder, link_text, 1)
+    return content
+
+def publish_to_ghost(title, content, status='draft', meta_description=None, keywords=None, tags=None):
     import requests
     import json as json_module
 
@@ -88,12 +135,22 @@ def publish_to_ghost(title, content, status='draft'):
         "sections": [[10, 0]]
     }
 
+    # Prepare tags
+    post_tags = tags if tags else []
+    if keywords:
+        # Add keywords as tags (Ghost uses tags for categorization)
+        for keyword in keywords[:5]:  # Limit to 5 keywords as tags
+            if keyword not in post_tags:
+                post_tags.append({'name': keyword})
+
     post_data = {
         'posts': [{
             'title': title,
             'mobiledoc': json_module.dumps(mobiledoc),
             'status': status,
-            'tags': []
+            'meta_description': meta_description,
+            'custom_excerpt': meta_description,  # Also use as excerpt
+            'tags': post_tags
         }]
     }
 
@@ -113,26 +170,37 @@ def generate_blog():
         topic = data.get('topic')
         status = data.get('status', 'draft')
         model = data.get('model', 'llama-3.3-70b-versatile')
+        tone = data.get('tone', 'professional')
+        language = data.get('language', 'en')
+        tags = data.get('tags', [])
+        link_existing = data.get('link_existing', False)
 
         if not topic:
             return jsonify({'error': 'Topic is required'}), 400
 
-        app.logger.info(f"Generating blog for topic: {topic}")
+        app.logger.info(f"Generating blog for topic: {topic} in {language} with {tone} tone")
 
-        blog_content = generate_blog_content(topic, model)
+        blog_content = generate_blog_content(topic, model, tone, language)
 
         import json
         blog_json = json.loads(blog_content)
 
         title = blog_json.get('title', topic)
         content_markdown = blog_json.get('content', '')
+        meta_description = blog_json.get('meta_description', '')
+        keywords = blog_json.get('keywords', [])
+        internal_links = blog_json.get('internal_links', [])
+
+        # Add internal links if requested
+        if link_existing and internal_links:
+            content_markdown = add_internal_links(content_markdown, internal_links)
 
         # Convert markdown to HTML
         content_html = markdown.markdown(content_markdown, extensions=['extra', 'codehilite', 'nl2br', 'tables'])
 
         app.logger.info(f"Publishing to Ghost: {title}")
 
-        result = publish_to_ghost(title, content_html, status)
+        result = publish_to_ghost(title, content_html, status, meta_description, keywords, tags)
 
         return jsonify({
             'success': True,
@@ -157,6 +225,46 @@ def list_models():
         'qwen/qwen3-32b'
     ]
     return jsonify({'models': models}), 200
+
+@app.route('/ghost-posts', methods=['GET'])
+def get_ghost_posts():
+    """Get existing Ghost posts for the blog integration"""
+    try:
+        import requests
+
+        token = generate_ghost_token()
+
+        # Get posts with limit and fields
+        url = f"{GHOST_API_URL}/ghost/api/admin/posts/?limit=50&fields=id,title,slug,published_at,tags,custom_excerpt&order=published_at%20desc"
+
+        headers = {
+            'Authorization': f'Ghost {token}',
+            'Content-Type': 'application/json'
+        }
+
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+
+        posts = response.json()['posts']
+
+        # Format for frontend consumption
+        formatted_posts = []
+        for post in posts:
+            formatted_posts.append({
+                'id': post.get('id'),
+                'title': post.get('title'),
+                'slug': post.get('slug'),
+                'excerpt': post.get('custom_excerpt', ''),
+                'published_at': post.get('published_at'),
+                'tags': [tag.get('name') for tag in post.get('tags', [])] if post.get('tags') else [],
+                'url': f"{GHOST_API_URL}/{post.get('slug')}/"
+            })
+
+        return jsonify({'posts': formatted_posts}), 200
+
+    except Exception as e:
+        app.logger.error(f"Error fetching Ghost posts: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/', methods=['GET'])
 def index():
@@ -348,6 +456,45 @@ How AI is Transforming Healthcare"
             </div>
 
             <div class="form-group">
+                <label for="tone">Content Tone</label>
+                <select id="tone">
+                    <option value="professional" selected>Professional</option>
+                    <option value="casual">Casual</option>
+                    <option value="technical">Technical</option>
+                    <option value="educational">Educational</option>
+                    <option value="persuasive">Persuasive</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="language">Language</label>
+                <select id="language">
+                    <option value="en" selected>English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="it">Italian</option>
+                    <option value="nl">Dutch</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ko">Korean</option>
+                    <option value="ar">Arabic</option>
+                    <option value="hi">Hindi</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="tags">Tags (comma-separated)</label>
+                <input
+                    id="tags"
+                    type="text"
+                    placeholder="e.g., technology, ai, innovation"
+                />
+            </div>
+
+            <div class="form-group">
                 <label for="status">Post Status</label>
                 <select id="status">
                     <option value="draft">Save as Draft</option>
@@ -376,6 +523,10 @@ How AI is Transforming Healthcare"
             const topic = document.getElementById('topic').value.trim();
             const model = document.getElementById('model').value;
             const status = document.getElementById('status').value;
+            const tone = document.getElementById('tone').value;
+            const language = document.getElementById('language').value;
+            const tagsInput = document.getElementById('tags').value.trim();
+            const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()) : [];
 
             if (!topic) {
                 showStatus('error', 'Please enter a blog topic');
@@ -395,7 +546,11 @@ How AI is Transforming Healthcare"
                     body: JSON.stringify({
                         topic: topic,
                         model: model,
-                        status: status
+                        status: status,
+                        tone: tone,
+                        language: language,
+                        tags: tags,
+                        link_existing: true
                     })
                 });
 
