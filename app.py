@@ -1,6 +1,7 @@
 import os
 import jwt
 import time
+import markdown
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
@@ -112,11 +113,14 @@ def generate_blog():
         blog_json = json.loads(blog_content)
 
         title = blog_json.get('title', topic)
-        content = blog_json.get('content', '')
+        content_markdown = blog_json.get('content', '')
+
+        # Convert markdown to HTML
+        content_html = markdown.markdown(content_markdown, extensions=['extra', 'codehilite', 'nl2br', 'tables'])
 
         app.logger.info(f"Publishing to Ghost: {title}")
 
-        result = publish_to_ghost(title, content, status)
+        result = publish_to_ghost(title, content_html, status)
 
         return jsonify({
             'success': True,
