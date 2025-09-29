@@ -69,7 +69,8 @@ def publish_to_ghost(title, content, status='draft'):
 
     token = generate_ghost_token()
 
-    url = f"{GHOST_API_URL}/ghost/api/admin/posts/"
+    # Add ?source=html parameter for Ghost v5 Lexical editor compatibility
+    url = f"{GHOST_API_URL}/ghost/api/admin/posts/?source=html"
 
     headers = {
         'Authorization': f'Ghost {token}',
