@@ -66,21 +66,32 @@ Format the response as JSON with keys: "title", "content" (in markdown)"""
 
 def publish_to_ghost(title, content, status='draft'):
     import requests
+    import json as json_module
 
     token = generate_ghost_token()
 
-    # Add ?source=html parameter for Ghost v5 Lexical editor compatibility
-    url = f"{GHOST_API_URL}/ghost/api/admin/posts/?source=html"
+    # Use mobiledoc format for Ghost v5
+    url = f"{GHOST_API_URL}/ghost/api/admin/posts/"
 
     headers = {
         'Authorization': f'Ghost {token}',
         'Content-Type': 'application/json'
     }
 
+    # Convert HTML to mobiledoc format
+    # Mobiledoc expects a specific JSON structure
+    mobiledoc = {
+        "version": "0.3.1",
+        "atoms": [],
+        "cards": [["html", {"html": content}]],
+        "markups": [],
+        "sections": [[10, 0]]
+    }
+
     post_data = {
         'posts': [{
             'title': title,
-            'html': content,
+            'mobiledoc': json_module.dumps(mobiledoc),
             'status': status,
             'tags': []
         }]
